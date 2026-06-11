@@ -17,7 +17,7 @@ The project provides data and context for AI conversations. It must not execute 
 
 ## Current Project Path
 
-`C:\D2\d2-analyzer`
+`C:\D2\d2-ai-context`
 
 ## Current State
 
@@ -30,6 +30,7 @@ Implemented:
 - Manifest full export to compressed JSONL and CSV indexes.
 - AI context pack generation.
 - Search command over Manifest and profile data.
+- `inspect-item` command for Manifest item details plus owned instances, sockets, perks, and stats.
 - Installer/user convenience commands:
   - `python main.py setup`
   - `python main.py sync`
@@ -62,6 +63,8 @@ python main.py context-pack
 python main.py search "星界夜鹰"
 python main.py search "诱导推销" --scope manifest
 python main.py search "边缘交通" --scope profile
+python main.py inspect-item "牵引器火炮"
+python main.py inspect-item 3580904581 --owned-limit 1
 ```
 
 ## Key Files
@@ -162,17 +165,13 @@ Use text retrieval only for non-authoritative explanatory context supplied by th
 
 Highest priority:
 
-1. `inspect-item`
-   - Input: Chinese item name or hash.
-   - Output: item basics, official Chinese description, user-owned instances, socket/perk/stat details.
-
-2. `perk-pool`
+1. `perk-pool`
    - Input: Chinese weapon name or hash.
    - Output: full perk pool by socket column.
    - Include Chinese perk names and descriptions.
    - Use Manifest `sockets`, `socketEntries`, `randomizedPlugSetHash`, `reusablePlugSetHash`, and `DestinyPlugSetDefinition`.
 
-3. MCP server
+2. MCP server
    - Expose structured tools:
      - `d2_search_manifest`
      - `d2_search_profile`

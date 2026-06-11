@@ -40,6 +40,14 @@ python main.py search "诱导推销" --scope manifest
 python main.py search "边缘交通" --scope profile
 ```
 
+Inspect one item from Manifest plus user-owned instances:
+
+```powershell
+python main.py inspect-item "牵引器火炮"
+python main.py inspect-item 3580904581 --owned-limit 1
+python main.py inspect-item "鬼神胸甲" --json
+```
+
 Update current Bungie Manifest:
 
 ```powershell

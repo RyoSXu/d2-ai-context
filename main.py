@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import argparse
 
-from src.ai_context import add_ai_subcommands, build_context_pack, print_search_results, search_data
+from src.ai_context import (
+    add_ai_subcommands,
+    build_context_pack,
+    inspect_item,
+    print_inspect_item,
+    print_search_results,
+    search_data,
+)
 from src.config import load_settings
 from src.item_parser import parse_items
 from src.data_exporter import export_manifest_data
@@ -62,6 +69,15 @@ def main() -> None:
     if args.command == "context-pack":
         path = build_context_pack(settings)
         print(f"AI context pack written: {path}")
+
+    if args.command == "inspect-item":
+        result = inspect_item(settings, args.query, owned_limit=args.owned_limit)
+        if args.json:
+            import json
+
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print_inspect_item(result)
 
 
 if __name__ == "__main__":

@@ -83,6 +83,14 @@ python main.py search "边缘交通" --scope profile
 python main.py search "诱导推销" --scope manifest
 ```
 
+检查单个物品的 Manifest 定义和当前拥有实例：
+
+```powershell
+python main.py inspect-item "牵引器火炮"
+python main.py inspect-item 3580904581 --owned-limit 1
+python main.py inspect-item "鬼神胸甲" --json
+```
+
 ## 输出
 
 - `data/manifest/`：当前版本 SQLite Manifest。
