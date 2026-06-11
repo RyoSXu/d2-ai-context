@@ -1,0 +1,16 @@
+.env
+data/token.json
+data/profile/raw_profile.json
+data/profile/*.json
+data/profile/*.csv
+data/manifest/*.sqlite
+data/manifest/*.content
+data/manifest/*.zip
+data/manifest/manifest_meta.json
+data/context/
+data/exports/
+data/certs/
+__pycache__/
+*.pyc
+.venv/
+venv/

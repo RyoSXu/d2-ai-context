@@ -1,0 +1,166 @@
+# d2-ai-context
+
+本地只读的 Destiny 2 AI 上下文框架。
+
+`d2-ai-context` 读取 Bungie 官方 Manifest 和用户授权的 Profile 数据，将版本数据、库存、武器、护甲、异域装备、perk、socket、craftable 等信息整理成 AI 易读取的本地上下文。目标是让 AI 基于用户真实数据和当前版本数据，和用户讨论 build、武器 roll、异域搭配、缺失装备与刷取优先级。
+
+本项目保持只读：不会移动、装备、购买、分解、聚焦或修改任何账号物品。
+
+## 项目定位
+
+`d2-ai-context` 只负责给 AI 提供可靠上下文：
+
+- 当前 Bungie Manifest 版本数据。
+- 用户只读 Profile / 库存数据。
+- 可搜索的武器、护甲、异域、perk、socket 和 craftable 索引。
+- 给 AI 直接读取的紧凑 context pack。
+- 后续可扩展的 MCP、Skill、HTTP API 或自定义 AI 接入层。
+
+推荐把它理解为：
+
+```text
+Bungie API + 本地解析 + 索引导出 + AI 上下文
+```
+
+## 安装
+
+```powershell
+pip install -r requirements.txt
+copy .env.example .env
+```
+
+然后编辑 `.env`，填写 Bungie API 信息。
+
+## 创建 Bungie API Application
+
+1. 打开 Bungie.net 的开发者应用页面并创建 Application。
+2. 填写 `BUNGIE_API_KEY`、`BUNGIE_CLIENT_ID`、`BUNGIE_CLIENT_SECRET`。
+3. Redirect URL 填：`https://localhost:8765/callback`。
+4. 本工具只使用读取数据所需的 OAuth 登录，不会调用账号写接口。
+
+`.env` 示例：
+
+```dotenv
+BUNGIE_API_KEY=
+BUNGIE_CLIENT_ID=
+BUNGIE_CLIENT_SECRET=
+BUNGIE_REDIRECT_URI=https://localhost:8765/callback
+BUNGIE_LOCALE=zh-chs
+```
+
+## 快速开始
+
+推荐一键初始化、同步和检查：
+
+```powershell
+python main.py setup
+python main.py sync
+python main.py doctor
+```
+
+`sync` 会依次执行 Manifest 更新、OAuth/Profile 拉取、装备解析、Manifest 导出和 AI context pack 生成。
+
+首次登录会打开浏览器进入 Bungie 官方 OAuth 页面。不要在终端里输入 Bungie 密码。
+本地 OAuth 回调用自签名 HTTPS 证书，浏览器提示证书风险时可以继续访问 `localhost`。
+
+## 常用命令
+
+```powershell
+python main.py manifest
+python main.py login
+python main.py profile
+python main.py parse
+python main.py export-data
+python main.py context-pack
+python main.py all
+```
+
+搜索当前 Manifest 和用户数据：
+
+```powershell
+python main.py search "星界夜鹰"
+python main.py search "边缘交通" --scope profile
+python main.py search "诱导推销" --scope manifest
+```
+
+## 输出
+
+- `data/manifest/`：当前版本 SQLite Manifest。
+- `data/manifest/manifest_meta.json`：Manifest 版本、语言和本地路径元数据。
+- `data/profile/raw_profile.json`：原始 Profile 响应。
+- `data/profile/items_readable.json`：可读装备 JSON。
+- `data/profile/weapons.csv`：武器 CSV。
+- `data/profile/armor.csv`：护甲 CSV。
+- `data/profile/exotics.csv`：异域护甲 CSV。
+- `data/profile/craftables.json`：craftables 原始片段。
+- `data/exports/`：当前 Manifest 的全量 JSONL 压缩导出和 CSV 索引。
+- `data/context/ai_context_pack.md`：给 AI 读取的紧凑上下文包。
+
+## AI 工具用法
+
+这个项目可以作为任何 AI 工具的本地上下文来源。最低门槛流程：
+
+```powershell
+python main.py setup
+python main.py sync
+python main.py doctor
+```
+
+之后让 AI 优先读取：
+
+- `docs/AI_USAGE.md`
+- `data/context/ai_context_pack.md`
+- `data/profile/weapons.csv`
+- `data/profile/armor.csv`
+- `data/profile/exotics.csv`
+- `data/exports/*/indexes/inventory_items_index.csv`
+- `data/exports/*/indexes/sandbox_perks_index.csv`
+
+回答 build 问题时，应明确区分：
+
+- Bungie/API 事实：Manifest、物品定义、perk 描述、用户拥有的装备和 roll。
+- 用户 Profile 事实：当前库存、角色、装备实例、socket、stat、craftable。
+- 外部判断：强度评价、god roll、配装推荐、活动适配性、社区共识。
+
+## 集成方向
+
+项目主体应保持为通用 CLI / Python 数据框架，AI 适配层可以按需扩展：
+
+- CLI：适合脚本、手动同步、本地查询。
+- Context pack：适合复制到任意 AI Chat 工具或让 Agent 直接读取文件。
+- MCP server：适合支持工具调用的 AI 环境。
+- Codex Skill：适合告诉 Codex 如何使用本项目的数据、命令和边界。
+- HTTP API：适合自建 Web UI、bot、OpenAI API 工作流或其他客户端。
+
+Skill、MCP、HTTP API 都应调用同一套本地数据层，不应把 token、Profile 原始数据或 Manifest 数据打包进 Skill。
+
+## 隐私和安全
+
+以下文件包含敏感或私人信息，不要上传、粘贴到公开位置或提交到仓库：
+
+- `.env`
+- `data/token.json`
+- `data/profile/raw_profile.json`
+- profile 派生 CSV/JSON，如果用户不打算公开分享
+
+项目必须保持 Bungie 账号只读。不要添加或调用以下接口能力：
+
+- transfer item
+- equip item
+- socket item
+- dismantle item
+- purchase item
+- focus item
+
+## 常见错误
+
+- API key 缺失：检查 `.env` 里的 `BUNGIE_API_KEY`。
+- OAuth redirect 不匹配：Bungie Application 的 Redirect URL 必须和 `.env` 完全一致。
+- token 过期：工具会自动 refresh；refresh 失败会重新打开网页登录。
+- Manifest 下载失败：检查网络、Bungie 服务状态和 `BUNGIE_LOCALE`，工具会从 `zh-chs` fallback 到 `en`。
+- profile components 返回缺失：账号隐私设置或权限可能不允许读取某些 component，错误会列出请求的 component。
+- membershipType 识别失败：确认当前 Bungie 账号已绑定 Destiny 2 平台账号。
+
+## 当前限制
+
+当前版本重点是数据同步、解析、索引导出和 AI 上下文生成。它不内置权威强度排名，也不替用户执行任何账号操作。
