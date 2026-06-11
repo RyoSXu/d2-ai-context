@@ -23,6 +23,8 @@ class ManifestLoader:
         "DestinyPlugSetDefinition",
         "DestinyStatDefinition",
         "DestinyInventoryBucketDefinition",
+        "DestinySocketCategoryDefinition",
+        "DestinySocketTypeDefinition",
         "DestinyClassDefinition",
         "DestinyDamageTypeDefinition",
         "DestinyCollectibleDefinition",
@@ -148,3 +150,12 @@ class ManifestLoader:
 
     def get_collectible(self, collectible_hash: int | str | None) -> dict[str, Any] | None:
         return self.get_definition("DestinyCollectibleDefinition", collectible_hash)
+
+    def get_plug_set(self, plug_set_hash: int | str | None) -> dict[str, Any] | None:
+        return self.get_definition("DestinyPlugSetDefinition", plug_set_hash)
+
+    def get_socket_type(self, socket_type_hash: int | str | None) -> dict[str, Any] | None:
+        return self.get_definition("DestinySocketTypeDefinition", socket_type_hash)
+
+    def get_socket_category(self, socket_category_hash: int | str | None) -> dict[str, Any] | None:
+        return self.get_definition("DestinySocketCategoryDefinition", socket_category_hash)

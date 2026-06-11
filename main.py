@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from src.ai_context import (
     add_ai_subcommands,
     build_context_pack,
     inspect_item,
+    print_weapon_perk_pool,
     print_inspect_item,
     print_search_results,
     search_data,
+    weapon_perk_pool,
 )
 from src.config import load_settings
 from src.item_parser import parse_items
@@ -20,6 +23,8 @@ from src.profile_loader import load_profile
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Destiny 2 AI Context Framework")
     subparsers = parser.add_subparsers(dest="command", required=True)
     for command in ["setup", "sync", "doctor", "manifest", "login", "profile", "parse", "export-data", "all"]:
@@ -78,6 +83,15 @@ def main() -> None:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
             print_inspect_item(result)
+
+    if args.command == "perk-pool":
+        result = weapon_perk_pool(settings, args.query, include_reusable=args.include_reusable)
+        if args.json:
+            import json
+
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print_weapon_perk_pool(result)
 
 
 if __name__ == "__main__":

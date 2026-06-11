@@ -35,11 +35,11 @@ Bungie API + 本地解析 + 索引导出 + AI 上下文
 - 给 AI 读取的 `data/context/ai_context_pack.md` 生成。
 - Manifest/Profile 搜索命令。
 - 单物品 `inspect-item` 查询，可查看 Manifest 定义、用户拥有实例、socket、perk 和 stat。
+- 武器 `perk-pool` 查询，可按 socket/列查看 Manifest 中的完整 perk 池。
 - `setup`、`sync`、`doctor` 一键初始化、同步和健康检查命令。
 
 尚未完成：
 
-- `perk-pool`：按武器查询完整 perk 池并按 socket/列分组。
 - MCP server：把本地查询能力暴露给支持工具调用的 AI 客户端。
 - Codex Skill：让 Codex 按固定流程读取本项目数据。
 - HTTP API：给 Web UI、bot 或其他客户端使用。
@@ -105,6 +105,7 @@ python main.py doctor
 - 搜索当前 Manifest 里的物品、perk 和收藏品。
 - 搜索自己 Profile 中拥有的武器、护甲和异域。
 - 检查单个物品的官方定义和当前拥有实例。
+- 查询武器完整 perk 池，并按随机 socket/列分组查看中文 perk 名和描述。
 - 导出当前 Manifest 的全量 JSONL 压缩数据和常用 CSV 索引。
 - 生成紧凑 AI context pack，让 AI 基于当前版本和真实库存讨论 build、roll、缺失装备和刷取优先级。
 
@@ -136,6 +137,14 @@ python main.py search "诱导推销" --scope manifest
 python main.py inspect-item "牵引器火炮"
 python main.py inspect-item 3580904581 --owned-limit 1
 python main.py inspect-item "鬼神胸甲" --json
+```
+
+查询武器 perk 池：
+
+```powershell
+python main.py perk-pool "边缘交通"
+python main.py perk-pool 2228325504 --json
+python main.py perk-pool "边缘交通" --include-reusable
 ```
 
 ## 输出

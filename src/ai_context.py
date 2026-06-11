@@ -88,6 +88,101 @@ def inspect_item(settings: Settings, query: str, *, owned_limit: int = 10) -> di
     }
 
 
+def weapon_perk_pool(settings: Settings, query: str, *, include_reusable: bool = False) -> dict[str, Any]:
+    loader = ManifestLoader(settings)
+    if not loader.db_path or not loader.db_path.exists():
+        loader.update()
+
+    item = _resolve_inventory_item(loader, query)
+    if not item:
+        return {"query": query, "found": False, "item": None, "columns": [], "alternatives": []}
+    if item.get("itemType") != 3:
+        return {
+            "query": query,
+            "found": True,
+            "is_weapon": False,
+            "item": _manifest_summary(item),
+            "columns": [],
+            "alternatives": [],
+        }
+
+    alternatives = []
+    if not _looks_like_hash(query):
+        alternatives = [
+            _manifest_summary(candidate)
+            for candidate in loader.search_inventory_items(query, limit=10)
+            if candidate.get("hash") != item.get("hash")
+        ]
+
+    columns = _perk_pool_columns(loader, item, include_reusable=include_reusable)
+    return {
+        "query": query,
+        "found": True,
+        "is_weapon": True,
+        "item": _manifest_detail(loader, item),
+        "include_reusable": include_reusable,
+        "columns": columns,
+        "alternatives": alternatives,
+    }
+
+
+def print_weapon_perk_pool(result: dict[str, Any]) -> None:
+    if not result.get("found"):
+        print(f"未找到武器：{result.get('query', '')}")
+        print("建议先运行 python main.py manifest，或检查中文名 / item hash。")
+        return
+    if not result.get("is_weapon", True):
+        item = result.get("item") or {}
+        print(f"找到的物品不是武器：{item.get('name', result.get('query', ''))}")
+        if item.get("typeName"):
+            print(f"- 类型: {item['typeName']}")
+        return
+
+    item = result["item"]
+    print(f"# {item['name']} perk 池")
+    print("")
+    print("## Bungie/API 事实")
+    print(f"- hash: {item['hash']}")
+    print(f"- 类型: {_join_nonempty([item.get('tier'), item.get('typeName')])}")
+    if item.get("itemTypeDisplayName"):
+        print(f"- 类别: {item['itemTypeDisplayName']}")
+    if item.get("damageType"):
+        print(f"- 伤害类型: {item['damageType']}")
+    if item.get("ammoType"):
+        print(f"- 弹药类型: {item['ammoType']}")
+    print(f"- 包含可复用 socket: {'是' if result.get('include_reusable') else '否'}")
+
+    columns = result.get("columns") or []
+    if not columns:
+        print("")
+        print("未在 Manifest 中解析到 perk 池。")
+        return
+
+    for column in columns:
+        print("")
+        print(f"## {column['label']}")
+        print(f"- socketIndex: {column['socketIndex']}")
+        if column.get("socketCategory"):
+            print(f"- socketCategory: {column['socketCategory']}")
+        if column.get("plugCategoryIdentifiers"):
+            print(f"- plugCategory: {', '.join(column['plugCategoryIdentifiers'])}")
+        if column.get("randomizedPlugSetHash"):
+            print(f"- randomizedPlugSetHash: {column['randomizedPlugSetHash']}")
+        if column.get("reusablePlugSetHash"):
+            print(f"- reusablePlugSetHash: {column['reusablePlugSetHash']}")
+        for plug in column.get("plugs", []):
+            enhanced = " [强化]" if plug.get("enhanced") else ""
+            description = f"：{plug['description']}" if plug.get("description") else ""
+            print(f"- {plug['name']}{enhanced} ({plug['hash']}){description}")
+
+    alternatives = result.get("alternatives") or []
+    if alternatives:
+        print("")
+        print("## 其他同名/近似 Manifest 命中")
+        for candidate in alternatives[:5]:
+            print(f"- {candidate['hash']} | {candidate['name']} | {candidate.get('typeName', '')}")
+
+
 def print_inspect_item(result: dict[str, Any]) -> None:
     if not result.get("found"):
         print(f"未找到物品：{result.get('query', '')}")
@@ -190,6 +285,7 @@ def build_context_pack(settings: Settings) -> Path:
     lines.append("python main.py search \"星界夜鹰\"")
     lines.append("python main.py search \"诱导推销\" --scope manifest")
     lines.append("python main.py inspect-item \"牵引器火炮\"")
+    lines.append("python main.py perk-pool \"边缘交通\"")
     lines.append("python main.py context-pack")
     lines.append("```")
     lines.append("")
@@ -352,6 +448,130 @@ def _definition_stats(loader: ManifestLoader, item: dict[str, Any]) -> dict[str,
     return out
 
 
+def _perk_pool_columns(loader: ManifestLoader, item: dict[str, Any], *, include_reusable: bool) -> list[dict[str, Any]]:
+    columns: list[dict[str, Any]] = []
+    socket_entries = item.get("sockets", {}).get("socketEntries") or []
+    randomized_count = 0
+    for index, entry in enumerate(socket_entries):
+        randomized_hash = entry.get("randomizedPlugSetHash")
+        reusable_hash = entry.get("reusablePlugSetHash")
+        if not randomized_hash and not (include_reusable and reusable_hash):
+            continue
+
+        plug_set_hash = randomized_hash or reusable_hash
+        plugs = _plug_pool(loader, entry, plug_set_hash)
+        if not plugs:
+            continue
+
+        socket_type = loader.get_socket_type(entry.get("socketTypeHash")) or {}
+        socket_category = loader.get_socket_category(socket_type.get("socketCategoryHash")) or {}
+        identifiers = _plug_category_identifiers(socket_type)
+        if randomized_hash:
+            randomized_count += 1
+            label = _weapon_column_label(randomized_count, identifiers)
+        else:
+            label = f"可复用 socket {index}"
+            category_name = display_name(socket_category, "")
+            if category_name:
+                label = f"{label}（{category_name}）"
+
+        columns.append(
+            {
+                "label": label,
+                "socketIndex": index,
+                "socketTypeHash": entry.get("socketTypeHash"),
+                "socketCategory": display_name(socket_category, ""),
+                "plugCategoryIdentifiers": identifiers,
+                "randomizedPlugSetHash": randomized_hash,
+                "reusablePlugSetHash": reusable_hash if not randomized_hash else None,
+                "singleInitialItemHash": entry.get("singleInitialItemHash"),
+                "plugs": plugs,
+            }
+        )
+    return columns
+
+
+def _plug_pool(loader: ManifestLoader, socket_entry: dict[str, Any], plug_set_hash: int | str | None) -> list[dict[str, Any]]:
+    plug_hashes: list[Any] = []
+    plug_set = loader.get_plug_set(plug_set_hash)
+    if plug_set:
+        plug_hashes.extend(plug.get("plugItemHash") for plug in plug_set.get("reusablePlugItems", []) or [])
+    if not plug_hashes:
+        plug_hashes.extend(plug.get("plugItemHash") for plug in socket_entry.get("reusablePlugItems", []) or [])
+    if not plug_hashes and socket_entry.get("singleInitialItemHash"):
+        plug_hashes.append(socket_entry.get("singleInitialItemHash"))
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for plug_hash in plug_hashes:
+        if plug_hash in ("", None):
+            continue
+        key = str(plug_hash)
+        if key in seen:
+            continue
+        seen.add(key)
+        plug = loader.get_inventory_item(plug_hash)
+        if not plug:
+            continue
+        name = display_name(plug, "")
+        if not name or _is_dummy_plug(plug):
+            continue
+        out.append(
+            {
+                "hash": plug.get("hash", plug_hash),
+                "name": name,
+                "description": plug.get("displayProperties", {}).get("description", ""),
+                "itemTypeDisplayName": plug.get("itemTypeDisplayName", ""),
+                "tierTypeName": plug.get("inventory", {}).get("tierTypeName", ""),
+                "plugCategoryIdentifier": plug.get("plug", {}).get("plugCategoryIdentifier", ""),
+                "enhanced": "强化" in plug.get("itemTypeDisplayName", "") or "Enhanced" in plug.get("itemTypeDisplayName", ""),
+            }
+        )
+    duplicate_names = {plug["name"] for plug in out if sum(1 for candidate in out if candidate["name"] == plug["name"]) > 1}
+    for plug in out:
+        if plug["name"] in duplicate_names and plug.get("tierTypeName") == "罕见":
+            plug["enhanced"] = True
+    return out
+
+
+def _plug_category_identifiers(socket_type: dict[str, Any]) -> list[str]:
+    identifiers: list[str] = []
+    for entry in socket_type.get("plugWhitelist", []) or []:
+        identifier = entry.get("categoryIdentifier")
+        if identifier and not identifier.startswith("crafting.recipes"):
+            identifiers.append(identifier)
+    return identifiers
+
+
+def _weapon_column_label(index: int, identifiers: list[str]) -> str:
+    names = {
+        "barrels": "枪管",
+        "tubes": "发射管",
+        "magazines": "弹匣",
+        "magazines_gl": "弹匣",
+        "magazines_battery": "电池",
+        "bowstrings": "弓弦",
+        "arrow_shafts": "箭杆",
+        "scopes": "瞄具",
+        "stocks": "枪托",
+        "grips": "握把",
+        "blades": "剑刃",
+        "guards": "护手",
+        "frames": "特性",
+        "origin_traits": "起源特性",
+    }
+    label = next((names[identifier] for identifier in identifiers if identifier in names), "")
+    if label:
+        return f"第 {index} 列：{label}"
+    return f"第 {index} 列"
+
+
+def _is_dummy_plug(plug: dict[str, Any]) -> bool:
+    display = plug.get("displayProperties", {})
+    text = f"{display.get('name', '')} {display.get('description', '')}".lower()
+    return bool(plug.get("plug", {}).get("isDummyPlug")) or "empty socket" in text or "empty mod socket" in text or "空插槽" in text
+
+
 def _print_owned_instance(index: int, instance: dict[str, Any]) -> None:
     print("")
     print(f"### 实例 {index}")
@@ -434,3 +654,8 @@ def add_ai_subcommands(subparsers: argparse._SubParsersAction[argparse.ArgumentP
     inspect_parser.add_argument("query", help="Chinese item name or item hash.")
     inspect_parser.add_argument("--owned-limit", type=int, default=10, help="Maximum owned instances to print.")
     inspect_parser.add_argument("--json", action="store_true", help="Print structured JSON instead of readable text.")
+
+    perk_pool_parser = subparsers.add_parser("perk-pool", help="Show a weapon's Manifest perk pool by socket column.")
+    perk_pool_parser.add_argument("query", help="Chinese weapon name or item hash.")
+    perk_pool_parser.add_argument("--include-reusable", action="store_true", help="Also include non-random reusable sockets such as origin traits, ornaments, mods, and mementos.")
+    perk_pool_parser.add_argument("--json", action="store_true", help="Print structured JSON instead of readable text.")
