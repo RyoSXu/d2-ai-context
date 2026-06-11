@@ -22,6 +22,31 @@
 Bungie API + 本地解析 + 索引导出 + AI 上下文
 ```
 
+## 当前状态
+
+当前项目处于可用 MVP 阶段，重点是 CLI、本地数据同步、索引导出和 AI 上下文生成。
+
+已经完成：
+
+- Manifest 下载、更新和本地 SQLite 缓存。
+- Bungie OAuth 登录、token refresh 和只读 Profile 拉取。
+- 武器、护甲、异域、perk、socket、stat 和 craftable 数据解析。
+- 可读 JSON、CSV profile 数据和 Manifest CSV 索引导出。
+- 给 AI 读取的 `data/context/ai_context_pack.md` 生成。
+- Manifest/Profile 搜索命令。
+- 单物品 `inspect-item` 查询，可查看 Manifest 定义、用户拥有实例、socket、perk 和 stat。
+- `setup`、`sync`、`doctor` 一键初始化、同步和健康检查命令。
+
+尚未完成：
+
+- `perk-pool`：按武器查询完整 perk 池并按 socket/列分组。
+- MCP server：把本地查询能力暴露给支持工具调用的 AI 客户端。
+- Codex Skill：让 Codex 按固定流程读取本项目数据。
+- HTTP API：给 Web UI、bot 或其他客户端使用。
+- 权威强度排名、自动 build 推荐或社区 meta 判断。
+
+当前推荐使用方式是：用 CLI 同步和查询数据，再把生成的 context pack、CSV 和索引交给 AI 工具读取。
+
 ## 安装
 
 ```powershell
@@ -37,6 +62,16 @@ copy .env.example .env
 2. 填写 `BUNGIE_API_KEY`、`BUNGIE_CLIENT_ID`、`BUNGIE_CLIENT_SECRET`。
 3. Redirect URL 填：`https://localhost:8765/callback`。
 4. 本工具只使用读取数据所需的 OAuth 登录，不会调用账号写接口。
+
+为什么需要自己创建 Bungie API Application：
+
+- Bungie OAuth 登录必须绑定一个已注册的 API Application，包括 API key、client id、client secret 和 redirect URL。
+- DIM 之类的工具也使用 Bungie OAuth，只是 DIM 团队已经注册并运营了自己的官方应用，所以用户只看到“点击登录”。
+- `d2-ai-context` 当前是纯本地、开源、无托管后端的 CLI 工具，没有公共服务器替用户完成 OAuth 应用身份和回调流程。
+- `client secret` 不能安全地写进公开 GitHub 仓库；如果项目内置公共 secret，就等于泄露这个 Bungie 应用的凭据。
+- 因此当前版本采用“用户自己创建 Bungie Application，本机通过 `localhost` 回调登录”的方式，换来更简单的本地部署和更清楚的账号边界。
+
+后续如果项目提供官方 Bungie Application、公共登录入口或安全的公开客户端 OAuth 流程，可以把体验改成更接近 DIM：用户只点击登录，不再手动填写 API 信息。
 
 `.env` 示例：
 
@@ -62,6 +97,18 @@ python main.py doctor
 
 首次登录会打开浏览器进入 Bungie 官方 OAuth 页面。不要在终端里输入 Bungie 密码。
 本地 OAuth 回调用自签名 HTTPS 证书，浏览器提示证书风险时可以继续访问 `localhost`。
+
+## 现在能做什么
+
+同步完成后，用户可以：
+
+- 搜索当前 Manifest 里的物品、perk 和收藏品。
+- 搜索自己 Profile 中拥有的武器、护甲和异域。
+- 检查单个物品的官方定义和当前拥有实例。
+- 导出当前 Manifest 的全量 JSONL 压缩数据和常用 CSV 索引。
+- 生成紧凑 AI context pack，让 AI 基于当前版本和真实库存讨论 build、roll、缺失装备和刷取优先级。
+
+这个项目提供事实上下文，不内置权威 meta 结论。涉及强度排行、god roll、赛季环境或活动推荐时，应额外结合当前补丁说明和可靠社区资料。
 
 ## 常用命令
 
