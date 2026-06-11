@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from .ai_context import build_context_pack
+from .build_exporter import export_build_data
 from .config import (
     CERTS_DIR,
     DATA_DIR,
@@ -18,7 +19,6 @@ from .config import (
     Settings,
     ensure_dirs,
 )
-from .data_exporter import export_manifest_data
 from .item_parser import parse_items
 from .manifest_loader import META_PATH, ManifestLoader
 from .oauth import CERT_PATH, KEY_PATH, ensure_localhost_cert, get_valid_token
@@ -63,7 +63,7 @@ def run_sync(settings: Settings) -> dict[str, object]:
     result["profile"] = load_profile(settings).get("fetched_at")
     parsed = parse_items(ManifestLoader(settings))
     result["parsed_items"] = len(parsed.get("items", []))
-    result["export"] = export_manifest_data(settings).get("output_dir")
+    result["build_export"] = export_build_data(settings).get("output_dir")
     result["context_pack"] = str(build_context_pack(settings))
     return result
 
@@ -84,7 +84,7 @@ def run_doctor(settings: Settings) -> list[Check]:
     checks.append(_path_check("Weapons CSV", PROFILE_DIR / "weapons.csv", "运行 python main.py parse"))
     checks.append(_path_check("Armor CSV", PROFILE_DIR / "armor.csv", "运行 python main.py parse"))
     checks.append(_path_check("Exotics CSV", PROFILE_DIR / "exotics.csv", "运行 python main.py parse"))
-    checks.append(_path_check("Manifest export summary", _latest_export_summary(), "运行 python main.py export-data"))
+    checks.append(_path_check("Build export summary", _latest_build_export_summary(), "运行 python main.py export-build-data"))
     checks.append(_path_check("AI context pack", DATA_DIR / "context" / "ai_context_pack.md", "运行 python main.py context-pack"))
     checks.append(_path_check("Local HTTPS cert", CERT_PATH, "运行 python main.py setup"))
     checks.append(_path_check("Local HTTPS key", KEY_PATH, "运行 python main.py setup"))
@@ -109,7 +109,7 @@ def print_sync_result(result: dict[str, object]) -> None:
     print(f"Token expires_at: {result.get('token_expires_at')}")
     print(f"Profile fetched_at: {result.get('profile')}")
     print(f"Parsed items: {result.get('parsed_items')}")
-    print(f"Export: {result.get('export')}")
+    print(f"Build export: {result.get('build_export')}")
     print(f"AI context pack: {result.get('context_pack')}")
 
 
@@ -161,6 +161,14 @@ def _latest_export_summary() -> Path:
     if not exports_dir.exists():
         return exports_dir / "missing"
     candidates = sorted(exports_dir.glob("manifest_*/manifest_export_summary.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidates[0] if candidates else exports_dir / "missing"
+
+
+def _latest_build_export_summary() -> Path:
+    exports_dir = DATA_DIR / "build_exports"
+    if not exports_dir.exists():
+        return exports_dir / "missing"
+    candidates = sorted(exports_dir.glob("build_*/build_export_summary.json"), key=lambda p: p.stat().st_mtime, reverse=True)
     return candidates[0] if candidates else exports_dir / "missing"
 
 

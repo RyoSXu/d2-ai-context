@@ -31,7 +31,7 @@ Bungie API + 本地解析 + 索引导出 + AI 上下文
 - Manifest 下载、更新和本地 SQLite 缓存。
 - Bungie OAuth 登录、token refresh 和只读 Profile 拉取。
 - 武器、护甲、异域、perk、socket、stat 和 craftable 数据解析。
-- 可读 JSON、CSV profile 数据和 Manifest CSV 索引导出。
+- 可读 JSON、CSV profile 数据和 build 专用 Manifest 导出。
 - 给 AI 读取的 `data/context/ai_context_pack.md` 生成。
 - Manifest/Profile 搜索命令。
 - 单物品 `inspect-item` 查询，可查看 Manifest 定义、用户拥有实例、socket、perk 和 stat。
@@ -106,7 +106,7 @@ python main.py doctor
 - 搜索自己 Profile 中拥有的武器、护甲和异域。
 - 检查单个物品的官方定义和当前拥有实例。
 - 查询武器完整 perk 池，并按随机 socket/列分组查看中文 perk 名和描述。
-- 导出当前 Manifest 的全量 JSONL 压缩数据和常用 CSV 索引。
+- 导出当前 Manifest 中和 build 相关的武器、护甲、职业、神器、机灵、模组、perk、socket 和 plug pool 数据。
 - 生成紧凑 AI context pack，让 AI 基于当前版本和真实库存讨论 build、roll、缺失装备和刷取优先级。
 
 这个项目提供事实上下文，不内置权威 meta 结论。涉及强度排行、god roll、赛季环境或活动推荐时，应额外结合当前补丁说明和可靠社区资料。
@@ -118,6 +118,7 @@ python main.py manifest
 python main.py login
 python main.py profile
 python main.py parse
+python main.py export-build-data
 python main.py export-data
 python main.py context-pack
 python main.py all
@@ -157,7 +158,8 @@ python main.py perk-pool "边缘交通" --include-reusable
 - `data/profile/armor.csv`：护甲 CSV。
 - `data/profile/exotics.csv`：异域护甲 CSV。
 - `data/profile/craftables.json`：craftables 原始片段。
-- `data/exports/`：当前 Manifest 的全量 JSONL 压缩导出和 CSV 索引。
+- `data/build_exports/`：当前 Manifest 的 build 专用导出，包含武器、护甲、职业、神器、机灵、模组、perk、socket 和 plug pool。
+- `data/exports/`：当前 Manifest 的全量 JSONL 压缩导出和 CSV 索引，仅在 build 专用导出不够时使用。
 - `data/context/ai_context_pack.md`：给 AI 读取的紧凑上下文包。
 
 ## AI 工具用法
@@ -177,8 +179,10 @@ python main.py doctor
 - `data/profile/weapons.csv`
 - `data/profile/armor.csv`
 - `data/profile/exotics.csv`
-- `data/exports/*/indexes/inventory_items_index.csv`
-- `data/exports/*/indexes/sandbox_perks_index.csv`
+- `data/build_exports/*/build_export_summary.json`
+- `data/build_exports/*/build_items_index.csv`
+- `data/build_exports/*/build_items.jsonl.gz`
+- `data/build_exports/*/sandbox_perks.jsonl.gz`
 
 回答 build 问题时，应明确区分：
 

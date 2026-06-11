@@ -14,6 +14,7 @@ from src.ai_context import (
     weapon_perk_pool,
 )
 from src.config import load_settings
+from src.build_exporter import export_build_data
 from src.item_parser import parse_items
 from src.data_exporter import export_manifest_data
 from src.manifest_loader import ManifestLoader
@@ -27,7 +28,7 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Destiny 2 AI Context Framework")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for command in ["setup", "sync", "doctor", "manifest", "login", "profile", "parse", "export-data", "all"]:
+    for command in ["setup", "sync", "doctor", "manifest", "login", "profile", "parse", "export-data", "export-build-data", "all"]:
         subparsers.add_parser(command)
     add_ai_subcommands(subparsers)
     args = parser.parse_args()
@@ -66,6 +67,11 @@ def main() -> None:
         summary = export_manifest_data(settings)
         print(f"Manifest export written: {summary.get('output_dir')}")
         print(f"Tables exported: {len(summary.get('tables', {}))}")
+
+    if args.command in ("export-build-data",):
+        summary = export_build_data(settings)
+        print(f"Build export written: {summary.get('output_dir')}")
+        print(f"Build items exported: {summary.get('counts', {}).get('build_items')}")
 
     if args.command == "search":
         results = search_data(settings, args.query, limit=args.limit, scope=args.scope)

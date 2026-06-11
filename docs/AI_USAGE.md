@@ -8,13 +8,15 @@ When an AI agent starts a task, read these first:
 
 1. `data/context/ai_context_pack.md`
 2. `data/manifest/manifest_meta.json`
-3. `data/profile/weapons.csv`
-4. `data/profile/armor.csv`
-5. `data/profile/exotics.csv`
-6. `data/exports/*/indexes/inventory_items_index.csv`
-7. `data/exports/*/indexes/sandbox_perks_index.csv`
+3. `data/build_exports/*/build_export_summary.json`
+4. `data/build_exports/*/build_items_index.csv`
+5. `data/build_exports/*/build_items.jsonl.gz`
+6. `data/build_exports/*/sandbox_perks.jsonl.gz`
+7. `data/profile/weapons.csv`
+8. `data/profile/armor.csv`
+9. `data/profile/exotics.csv`
 
-Only query the full SQLite database or `tables_jsonl_gz` files when the indexes are not enough.
+Only query the full SQLite database or `data/exports/*/tables_jsonl_gz` files when the build export is not enough.
 
 ## Commands
 
@@ -61,7 +63,13 @@ python main.py profile
 python main.py parse
 ```
 
-Export all Manifest tables and indexes:
+Export build-focused Manifest data:
+
+```powershell
+python main.py export-build-data
+```
+
+Export all Manifest tables and indexes only when a build-focused export is not enough:
 
 ```powershell
 python main.py export-data
